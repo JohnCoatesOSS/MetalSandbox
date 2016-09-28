@@ -235,7 +235,6 @@ struct Vertex {
         // read it in our vertex shader.
         renderEncoder.setVertexBuffer(vertexBuffer, offset:0, at:0)
         renderEncoder.setFragmentTexture(texture, at: 0)
-        renderEncoder.setVertexTexture(texture, at: 1)
         renderEncoder.drawPrimitives(type: .triangle,
                                      vertexStart: 0,
                                      vertexCount: 6,
