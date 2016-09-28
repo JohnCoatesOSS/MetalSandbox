@@ -135,6 +135,7 @@ struct Vertex {
             fatalError("Couldn't create a texture cache")
         }
         CVMetalTextureCacheFlush(textureCache!, 0)
+        
         session = AVCaptureSession()
         session.beginConfiguration()
         
@@ -154,7 +155,12 @@ struct Vertex {
         // set the color space
         let pixelFormat = kCVPixelFormatType_32BGRA
         let pixelFormatKey = kCVPixelBufferPixelFormatTypeKey as NSString
-        dataOutput.videoSettings = [ pixelFormatKey: NSNumber(value: pixelFormat) ]
+        let metalCompatibilityKey = kCVPixelBufferMetalCompatibilityKey as NSString
+        
+        dataOutput.videoSettings = [
+            pixelFormatKey: NSNumber(value: pixelFormat),
+             metalCompatibilityKey: NSNumber(value: true)
+        ]
         
         // Set dispatch to be on the main thread to create the texture in memory
         // and allow Metal to use it for rendering
@@ -172,14 +178,13 @@ struct Vertex {
             print("Missing texture cache!")
             return
         }
-        CVMetalTextureCacheFlush(textureCache, 0)
+        
         guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             print("Couldn't get image buffer")
             return
         }
-        CVPixelBufferLockBaseAddress(imageBuffer, .readOnly)
         
-        var optionalTextureRef: CVMetalTexture?
+        var optionalTextureRef: CVMetalTexture? = nil
         
         let width = CVPixelBufferGetWidth(imageBuffer)
         let height = CVPixelBufferGetHeight(imageBuffer)
@@ -200,7 +205,7 @@ struct Vertex {
             print("buffer size: \(dataSize)")
             print("planes: \(planes)")
             print("texture cache: \(textureCache)")
-            #if os(OSX)
+            #if os(macOS)
                 let type = UTCreateStringForOSType(CVPixelBufferGetPixelFormatType(imageBuffer)).takeRetainedValue() as String
                 print("buffer pixel format: \(type)")
             #endif
@@ -239,7 +244,6 @@ struct Vertex {
                                      vertexStart: 0,
                                      vertexCount: 6,
                                      instanceCount: 1)
-
         
         renderEncoder.popDebugGroup()
     }
