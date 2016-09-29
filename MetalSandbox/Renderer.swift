@@ -24,12 +24,9 @@ struct Vertex {
     let device: MTLDevice
     let commandQueue: MTLCommandQueue
     let renderPipelineState: MTLRenderPipelineState
-    
     var vertices = [Vertex]()
     var textureCoordinates = [float2]()
-    
     var vertexBuffer: MTLBuffer
-    
     
     init?(metalView: MTKView) {
         view = metalView
@@ -53,6 +50,7 @@ struct Vertex {
         
         super.init()
         setUpVideoQuadTexture()
+        startCapturingVideo()
         view.delegate = self
         view.device = device
     }
@@ -153,22 +151,16 @@ struct Vertex {
         commandBuffer.commit()
     }
     
-    // MARK: - Video
+    // MARK: - Texture
     
-    var session: AVCaptureSession!
-    var textureCache: CVMetalTextureCache?
-    var texture: MTLTexture?
-    var sampler: MTLSamplerState!
     func setUpVideoQuadTexture() {
-        var cacheAttributes = [NSString : NSNumber]()
-        cacheAttributes[kCVMetalTextureCacheMaximumTextureAgeKey as NSString] = NSNumber(value: 2)
-        
         guard CVMetalTextureCacheCreate(kCFAllocatorDefault,
-                                        cacheAttributes as NSDictionary,
-                                        device, nil, &textureCache) == kCVReturnSuccess else {
-            fatalError("Couldn't create a texture cache")
+                                        nil, // cache attributes
+                                        device,
+                                        nil, // texture attributes
+                                        &textureCache) == kCVReturnSuccess else {
+                                            fatalError("Couldn't create a texture cache")
         }
-        CVMetalTextureCacheFlush(textureCache!, 0)
         
         let samplerDescriptor = MTLSamplerDescriptor()
         samplerDescriptor.label = "video texture sampler"
@@ -176,7 +168,16 @@ struct Vertex {
         guard sampler != nil else {
             fatalError("Couldn't create a texture sampler")
         }
-        
+    }
+    
+    // MARK: - Video
+    
+    var session: AVCaptureSession!
+    var textureCache: CVMetalTextureCache?
+    var texture: MTLTexture?
+    var sampler: MTLSamplerState!
+    
+    func startCapturingVideo() {
         session = AVCaptureSession()
         session.beginConfiguration()
         
@@ -192,32 +193,8 @@ struct Vertex {
         
         let dataOutput = AVCaptureVideoDataOutput()
         dataOutput.alwaysDiscardsLateVideoFrames = true
-        
-        // set the color space
-        let pixelFormat = kCVPixelFormatType_32BGRA
-        let pixelFormatKey = kCVPixelBufferPixelFormatTypeKey as NSString
-        let metalCompatibilityKey = kCVPixelBufferMetalCompatibilityKey as NSString
-        
-        var videoSettings = [AnyHashable: AnyObject]()
-        videoSettings[pixelFormatKey] = NSNumber(value: pixelFormat)
-        #if os(macOS)
-            videoSettings[metalCompatibilityKey] = NSNumber(value: true)
-        #endif
-        dataOutput.videoSettings = videoSettings
-        
-        #if os(macOS)
-        if let formatTypes = dataOutput.availableVideoCVPixelFormatTypes {
-            for formatType in formatTypes {
-                if let type = formatType as? Int {
-                    let intType = UInt32(type)
-                    let osType = UTCreateStringForOSType(intType).takeRetainedValue() as String
-                    print("available pixel format type: \(osType)")
-                }
-                
-            }
-        }
-        #endif
-        
+        printAvailableFormatTypes(forDataOutput: dataOutput)
+        dataOutput.videoSettings = captureVideoSettings
         
         // Set dispatch to be on the main thread to create the texture in memory
         // and allow Metal to use it for rendering
@@ -226,6 +203,42 @@ struct Vertex {
         session.addOutput(dataOutput)
         session.commitConfiguration()
         session.startRunning()
+    }
+    
+    var captureVideoSettings: [AnyHashable: AnyObject] {
+        get {
+            let pixelFormat = kCVPixelFormatType_32BGRA
+            let pixelFormatKey = kCVPixelBufferPixelFormatTypeKey as NSString
+            let metalCompatibilityKey = kCVPixelBufferMetalCompatibilityKey as NSString
+            
+            var videoSettings = [AnyHashable: AnyObject]()
+            videoSettings[pixelFormatKey] = NSNumber(value: pixelFormat)
+            #if os(macOS)
+                videoSettings[metalCompatibilityKey] = NSNumber(value: true)
+            #endif
+            
+            return videoSettings
+        }
+    }
+    
+    func printAvailableFormatTypes(forDataOutput dataOutput: AVCaptureVideoDataOutput) {
+        #if os(iOS)
+            return
+        #endif
+        guard let formatTypes = dataOutput.availableVideoCVPixelFormatTypes else {
+            print("no available format types!")
+            return
+        }
+            
+        for formatType in formatTypes {
+            guard let type = formatType as? Int else {
+                continue
+            }
+            let intType = UInt32(type)
+            let osType = UTCreateStringForOSType(intType).takeRetainedValue() as String
+            print("available pixel format type: \(osType)")
+        }
+        
     }
     
     // MARK: - Video Delegate
@@ -255,13 +268,9 @@ struct Vertex {
                                                                     .bgra8Unorm,
                                                                     width, height, 0,
                                                                     &optionalTextureRef)
-        if returnValue != kCVReturnSuccess {
-            print("Error, couldn't create texture from image, error: \(returnValue), \(optionalTextureRef)")
-            return
-        }
         
-        guard let textureRef = optionalTextureRef else {
-            print("Nil texture reference returned")
+        guard returnValue == kCVReturnSuccess, let textureRef = optionalTextureRef else {
+            print("Error, couldn't create texture from image, error: \(returnValue), \(optionalTextureRef)")
             return
         }
         
