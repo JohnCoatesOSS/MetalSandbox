@@ -49,23 +49,7 @@ struct Vertex {
             return nil
         }
         
-        // quad
-        vertices.append(Vertex(position: float4(-1, -1, 0, 1),
-                               textureCoordinates: float2(0,0)))
-        vertices.append(Vertex(position: float4(1, -1, 0, 1),
-                               textureCoordinates: float2(1,0)))
-        vertices.append(Vertex(position: float4(-1, 1, 0, 1),
-                               textureCoordinates: float2(0,1)))
-        vertices.append(Vertex(position: float4(1, -1, 0, 1),
-                               textureCoordinates: float2(1,0)))
-        vertices.append(Vertex(position: float4(-1, 1, 0, 1),
-                               textureCoordinates: float2(0,1)))
-        vertices.append(Vertex(position: float4(1, 1, 0, 1),
-                               textureCoordinates: float2(1,1)))
-        
-        vertexBuffer = device.makeBuffer(bytes: vertices,
-                                             length: MemoryLayout<Vertex>.stride * vertices.count,
-                                             options: [])
+        vertexBuffer = Renderer.generateQuad(forDevice: device, inArray: &vertices)
         
         super.init()
         setUpVideoQuadTexture()
@@ -95,6 +79,25 @@ struct Vertex {
         default:
             return devices[0]
         }
+    }
+    
+    class func generateQuad(forDevice device: MTLDevice, inArray vertices: inout [Vertex]) -> MTLBuffer {
+        vertices.append(Vertex(position: float4(-1, -1, 0, 1),
+                               textureCoordinates: float2(0,0)))
+        vertices.append(Vertex(position: float4(1, -1, 0, 1),
+                               textureCoordinates: float2(1,0)))
+        vertices.append(Vertex(position: float4(-1, 1, 0, 1),
+                               textureCoordinates: float2(0,1)))
+        vertices.append(Vertex(position: float4(1, -1, 0, 1),
+                               textureCoordinates: float2(1,0)))
+        vertices.append(Vertex(position: float4(-1, 1, 0, 1),
+                               textureCoordinates: float2(0,1)))
+        vertices.append(Vertex(position: float4(1, 1, 0, 1),
+                               textureCoordinates: float2(1,1)))
+        
+        return device.makeBuffer(bytes: vertices,
+                                         length: MemoryLayout<Vertex>.stride * vertices.count,
+                                         options: [])
     }
     
     class func buildRenderPipeline(device: MTLDevice, view: MTKView) throws -> MTLRenderPipelineState {
