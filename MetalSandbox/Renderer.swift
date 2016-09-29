@@ -104,22 +104,26 @@ struct Vertex {
         
         // Ask the view for a configured render pass descriptor. It will have a loadAction of
         // MTLLoadActionClear and have the clear color of the drawable set to our desired clear color.
-        let renderPassDescriptor = view.currentRenderPassDescriptor
-        
-        if let renderPassDescriptor = renderPassDescriptor {
-            // Create a render encoder to clear the screen and draw our objects
-            let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)
-            
-            renderTextureQuad(renderEncoder: renderEncoder, view: view, identifier: "video texture")
-           
-            // We are finished with this render command encoder, so end it.
-            renderEncoder.endEncoding()
-            
-            // Tell the system to present the cleared drawable to the screen.
-            if let drawable = view.currentDrawable {
-                commandBuffer.present(drawable)
-            }
+        guard let currentDrawable = view.currentDrawable else {
+            fatalError("no drawable!")
         }
+//        let renderPassDescriptor = view.currentRenderPassDescriptor
+        let renderPassDescriptor = MTLRenderPassDescriptor()
+        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
+        renderPassDescriptor.colorAttachments[0].texture = currentDrawable.texture
+        renderPassDescriptor.colorAttachments[0].loadAction = .clear
+        renderPassDescriptor.colorAttachments[0].storeAction = .dontCare
+        
+        // Create a render encoder to clear the screen and draw our objects
+        let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)
+        
+        renderTextureQuad(renderEncoder: renderEncoder, view: view, identifier: "video texture")
+       
+        // We are finished with this render command encoder, so end it.
+        renderEncoder.endEncoding()
+        
+        // Tell the system to present the cleared drawable to the screen.
+        commandBuffer.present(currentDrawable)
         
         // Now that we're done issuing commands, we commit our buffer so the GPU can get to work.
         commandBuffer.commit()
