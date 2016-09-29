@@ -11,7 +11,6 @@ import Metal
 import MetalKit
 import AVFoundation
 import CoreVideo
-import simd
 
 struct Vertex {
     var position: float4
@@ -59,43 +58,45 @@ struct Vertex {
     
     class func getDevice() -> MTLDevice {
         #if os(iOS)
-        if let defaultDevice = MTLCreateSystemDefaultDevice() {
-            return defaultDevice
-        } else {
-            fatalError("Metal is not supported")
-        }
+            if let defaultDevice = MTLCreateSystemDefaultDevice() {
+                return defaultDevice
+            } else {
+                fatalError("Metal is not supported")
+            }
         #endif
         
-        let devices = MTLCopyAllDevices()
-        switch devices.count {
-        case 0:
-            fatalError("Metal is not supported")
-        case 2:
-            // temporary workaround for bug that gives bad
-            // performance on discrete GPU
-            return devices[1]
-        default:
-            return devices[0]
-        }
+        #if os(macOS)
+            let devices = MTLCopyAllDevices()
+            switch devices.count {
+            case 0:
+                fatalError("Metal is not supported")
+            case 2:
+                // temporary workaround for bug that gives bad
+                // performance on discrete GPU
+                return devices[1]
+            default:
+                return devices[0]
+            }
+        #endif
     }
     
     class func generateQuad(forDevice device: MTLDevice, inArray vertices: inout [Vertex]) -> MTLBuffer {
         vertices.append(Vertex(position: float4(-1, -1, 0, 1),
-                               textureCoordinates: float2(0,0)))
+                               textureCoordinates: float2(0, 0)))
         vertices.append(Vertex(position: float4(1, -1, 0, 1),
-                               textureCoordinates: float2(1,0)))
+                               textureCoordinates: float2(1, 0)))
         vertices.append(Vertex(position: float4(-1, 1, 0, 1),
-                               textureCoordinates: float2(0,1)))
+                               textureCoordinates: float2(0, 1)))
         vertices.append(Vertex(position: float4(1, -1, 0, 1),
-                               textureCoordinates: float2(1,0)))
+                               textureCoordinates: float2(1, 0)))
         vertices.append(Vertex(position: float4(-1, 1, 0, 1),
-                               textureCoordinates: float2(0,1)))
+                               textureCoordinates: float2(0, 1)))
         vertices.append(Vertex(position: float4(1, 1, 0, 1),
-                               textureCoordinates: float2(1,1)))
+                               textureCoordinates: float2(1, 1)))
         
         return device.makeBuffer(bytes: vertices,
-                                         length: MemoryLayout<Vertex>.stride * vertices.count,
-                                         options: [])
+                                 length: MemoryLayout<Vertex>.stride * vertices.count,
+                                 options: [])
     }
     
     class func buildRenderPipeline(device: MTLDevice, view: MTKView) throws -> MTLRenderPipelineState {
@@ -120,7 +121,7 @@ struct Vertex {
     
     // MARK: - Render
     
-    func render(_ view: MTKView) {        
+    func render(_ view: MTKView) {
         // Our command buffer is a container for the work we want to perform with the GPU.
         let commandBuffer = commandQueue.makeCommandBuffer()
         
@@ -129,7 +130,7 @@ struct Vertex {
         guard let currentDrawable = view.currentDrawable else {
             fatalError("no drawable!")
         }
-//        let renderPassDescriptor = view.currentRenderPassDescriptor
+        //        let renderPassDescriptor = view.currentRenderPassDescriptor
         let renderPassDescriptor = MTLRenderPassDescriptor()
         renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
         renderPassDescriptor.colorAttachments[0].texture = currentDrawable.texture
@@ -140,7 +141,7 @@ struct Vertex {
         let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)
         
         renderTextureQuad(renderEncoder: renderEncoder, view: view, identifier: "video texture")
-       
+        
         // We are finished with this render command encoder, so end it.
         renderEncoder.endEncoding()
         
@@ -156,10 +157,10 @@ struct Vertex {
     func setUpVideoQuadTexture() {
         guard CVMetalTextureCacheCreate(kCFAllocatorDefault,
                                         nil, // cache attributes
-                                        device,
-                                        nil, // texture attributes
-                                        &textureCache) == kCVReturnSuccess else {
-                                            fatalError("Couldn't create a texture cache")
+            device,
+            nil, // texture attributes
+            &textureCache) == kCVReturnSuccess else {
+                fatalError("Couldn't create a texture cache")
         }
         
         let samplerDescriptor = MTLSamplerDescriptor()
@@ -225,20 +226,22 @@ struct Vertex {
         #if os(iOS)
             return
         #endif
-        guard let formatTypes = dataOutput.availableVideoCVPixelFormatTypes else {
-            print("no available format types!")
-            return
-        }
-            
-        for formatType in formatTypes {
-            guard let type = formatType as? Int else {
-                continue
-            }
-            let intType = UInt32(type)
-            let osType = UTCreateStringForOSType(intType).takeRetainedValue() as String
-            print("available pixel format type: \(osType)")
-        }
         
+        #if os(macOS)
+            guard let formatTypes = dataOutput.availableVideoCVPixelFormatTypes else {
+                print("no available format types!")
+                return
+            }
+            
+            for formatType in formatTypes {
+                guard let type = formatType as? Int else {
+                    continue
+                }
+                let intType = UInt32(type)
+                let osType = UTCreateStringForOSType(intType).takeRetainedValue() as String
+                print("available pixel format type: \(osType)")
+            }
+        #endif
     }
     
     // MARK: - Video Delegate
@@ -282,7 +285,7 @@ struct Vertex {
         self.texture = texture
         frame += 1
         
-        if (frame % 10 == 0) {
+        if frame % 10 == 0 {
             print("new frame: \(frame)")
         }
     }
