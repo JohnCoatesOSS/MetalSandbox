@@ -207,9 +207,9 @@ struct Vertex {
     
     var captureVideoSettings: [AnyHashable: AnyObject] {
         get {
+            let pixelFormatKey = String(kCVPixelBufferPixelFormatTypeKey)
             let pixelFormat = kCVPixelFormatType_32BGRA
-            let pixelFormatKey = kCVPixelBufferPixelFormatTypeKey as NSString
-            let metalCompatibilityKey = kCVPixelBufferMetalCompatibilityKey as NSString
+            let metalCompatibilityKey = String(kCVPixelBufferMetalCompatibilityKey)
             
             var videoSettings = [AnyHashable: AnyObject]()
             videoSettings[pixelFormatKey] = NSNumber(value: pixelFormat)
