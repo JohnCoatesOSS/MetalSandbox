@@ -134,11 +134,24 @@ struct Vertex {
     var session: AVCaptureSession!
     var textureCache: CVMetalTextureCache?
     var texture: MTLTexture?
+    var sampler: MTLSamplerState!
     func setUpVideoQuadTexture() {
-        guard CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, device, nil, &textureCache) == kCVReturnSuccess else {
+        var cacheAttributes = [NSString : NSNumber]()
+        cacheAttributes[kCVMetalTextureCacheMaximumTextureAgeKey as NSString] = NSNumber(value: 2)
+        
+        guard CVMetalTextureCacheCreate(kCFAllocatorDefault,
+                                        cacheAttributes as NSDictionary,
+                                        device, nil, &textureCache) == kCVReturnSuccess else {
             fatalError("Couldn't create a texture cache")
         }
         CVMetalTextureCacheFlush(textureCache!, 0)
+        
+        let samplerDescriptor = MTLSamplerDescriptor()
+        samplerDescriptor.label = "video texture sampler"
+        sampler = device.makeSamplerState(descriptor: samplerDescriptor)
+        guard sampler != nil else {
+            fatalError("Couldn't create a texture sampler")
+        }
         
         session = AVCaptureSession()
         session.beginConfiguration()
@@ -244,11 +257,11 @@ struct Vertex {
         // read it in our vertex shader.
         renderEncoder.setVertexBuffer(vertexBuffer, offset:0, at:0)
         renderEncoder.setFragmentTexture(texture, at: 0)
+        renderEncoder.setFragmentSamplerState(sampler, at: 0)
         renderEncoder.drawPrimitives(type: .triangle,
                                      vertexStart: 0,
                                      vertexCount: 6,
                                      instanceCount: 1)
-        
         renderEncoder.popDebugGroup()
     }
     
