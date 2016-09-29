@@ -198,10 +198,7 @@ struct Vertex {
         var videoSettings = [AnyHashable: AnyObject]()
         videoSettings[pixelFormatKey] = NSNumber(value: pixelFormat)
         #if os(macOS)
-            kCVPixelBufferPoolMinimumBufferCountKey
             videoSettings[metalCompatibilityKey] = NSNumber(value: true)
-            videoSettings[String(kCVPixelBufferIOSurfacePropertiesKey)] = NSDictionary()
-//            videoSettings[String(kCVPixelBufferMemoryAllocatorKey)] = kCFAllocatorMalloc
         #endif
         dataOutput.videoSettings = videoSettings
         
