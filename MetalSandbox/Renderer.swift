@@ -29,20 +29,14 @@ struct Vertex {
     var textureCoordinates = [float2]()
     
     var vertexBuffer: MTLBuffer
+    
+    
     init?(metalView: MTKView) {
         view = metalView
         view.clearColor = MTLClearColorMake(1, 1, 1, 1)
         view.colorPixelFormat = .bgra8Unorm
         
-//        let devices = MTLCopyAllDevices()
-//        device = devices[0]
-        
-        if let defaultDevice = MTLCreateSystemDefaultDevice() {
-            device = defaultDevice
-        } else {
-            print("Metal is not supported")
-            return nil
-        }
+        device = Renderer.getDevice()
         
         // Create the command queue to submit work to the GPU
         commandQueue = device.makeCommandQueue()
@@ -77,6 +71,30 @@ struct Vertex {
         setUpVideoQuadTexture()
         view.delegate = self
         view.device = device
+    }
+    
+    // MARK: - Startup
+    
+    class func getDevice() -> MTLDevice {
+        #if os(iOS)
+        if let defaultDevice = MTLCreateSystemDefaultDevice() {
+            return defaultDevice
+        } else {
+            fatalError("Metal is not supported")
+        }
+        #endif
+        
+        let devices = MTLCopyAllDevices()
+        switch devices.count {
+        case 0:
+            fatalError("Metal is not supported")
+        case 2:
+            // temporary workaround for bug that gives bad
+            // performance on discrete GPU
+            return devices[1]
+        default:
+            return devices[0]
+        }
     }
     
     class func buildRenderPipeline(device: MTLDevice, view: MTKView) throws -> MTLRenderPipelineState {
