@@ -174,10 +174,29 @@ struct Vertex {
         let pixelFormatKey = kCVPixelBufferPixelFormatTypeKey as NSString
         let metalCompatibilityKey = kCVPixelBufferMetalCompatibilityKey as NSString
         
-        dataOutput.videoSettings = [
-            pixelFormatKey: NSNumber(value: pixelFormat),
-             metalCompatibilityKey: NSNumber(value: true)
-        ]
+        var videoSettings = [AnyHashable: AnyObject]()
+        videoSettings[pixelFormatKey] = NSNumber(value: pixelFormat)
+        #if os(macOS)
+            kCVPixelBufferPoolMinimumBufferCountKey
+            videoSettings[metalCompatibilityKey] = NSNumber(value: true)
+            videoSettings[String(kCVPixelBufferIOSurfacePropertiesKey)] = NSDictionary()
+//            videoSettings[String(kCVPixelBufferMemoryAllocatorKey)] = kCFAllocatorMalloc
+        #endif
+        dataOutput.videoSettings = videoSettings
+        
+        #if os(macOS)
+        if let formatTypes = dataOutput.availableVideoCVPixelFormatTypes {
+            for formatType in formatTypes {
+                if let type = formatType as? Int {
+                    let intType = UInt32(type)
+                    let osType = UTCreateStringForOSType(intType).takeRetainedValue() as String
+                    print("available pixel format type: \(osType)")
+                }
+                
+            }
+        }
+        #endif
+        
         
         // Set dispatch to be on the main thread to create the texture in memory
         // and allow Metal to use it for rendering
