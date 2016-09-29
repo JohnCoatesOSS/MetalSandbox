@@ -34,6 +34,9 @@ struct Vertex {
         view.clearColor = MTLClearColorMake(1, 1, 1, 1)
         view.colorPixelFormat = .bgra8Unorm
         
+//        let devices = MTLCopyAllDevices()
+//        device = devices[0]
+        
         if let defaultDevice = MTLCreateSystemDefaultDevice() {
             device = defaultDevice
         } else {
@@ -209,7 +212,10 @@ struct Vertex {
     
     // MARK: - Video Delegate
     
-    func captureOutput(_ captureOutput: AVCaptureOutput!, didOutputSampleBuffer sampleBuffer: CMSampleBuffer!, from connection: AVCaptureConnection!) {
+    var frame = 0
+    func captureOutput(_ captureOutput: AVCaptureOutput!,
+                       didOutputSampleBuffer sampleBuffer: CMSampleBuffer!,
+                       from connection: AVCaptureConnection!) {
         guard let textureCache = textureCache else {
             print("Missing texture cache!")
             return
@@ -224,7 +230,6 @@ struct Vertex {
         
         let width = CVPixelBufferGetWidth(imageBuffer)
         let height = CVPixelBufferGetHeight(imageBuffer)
-        
         let returnValue = CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault,
                                                                     textureCache,
                                                                     imageBuffer,
@@ -233,19 +238,6 @@ struct Vertex {
                                                                     width, height, 0,
                                                                     &optionalTextureRef)
         if returnValue != kCVReturnSuccess {
-            let dataSize = CVPixelBufferGetDataSize(imageBuffer)
-            let planes = CVPixelBufferGetPlaneCount(imageBuffer)
-            
-            print("device: \(device.name)")
-            print("width: \(width), height: \(height)")
-            print("buffer size: \(dataSize)")
-            print("planes: \(planes)")
-            print("texture cache: \(textureCache)")
-            #if os(macOS)
-                let type = UTCreateStringForOSType(CVPixelBufferGetPixelFormatType(imageBuffer)).takeRetainedValue() as String
-                print("buffer pixel format: \(type)")
-            #endif
-            
             print("Error, couldn't create texture from image, error: \(returnValue), \(optionalTextureRef)")
             return
         }
@@ -259,8 +251,13 @@ struct Vertex {
             print("Error, Couldn't get texture")
             return
         }
-        self.texture = texture
         
+        self.texture = texture
+        frame += 1
+        
+        if (frame % 10 == 0) {
+            print("new frame: \(frame)")
+        }
     }
     
     func renderTextureQuad(renderEncoder: MTLRenderCommandEncoder, view: MTKView, identifier: String) {
