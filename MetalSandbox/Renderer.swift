@@ -81,8 +81,8 @@ struct Vertex {
         let library = device.newDefaultLibrary()!
         
         // Retrieve the functions that will comprise our pipeline
-        let vertexFunction = library.makeFunction(name: "vertex_passthrough")
-        let fragmentFunction = library.makeFunction(name: "fragment_passthrough")
+        let vertexFunction = library.makeFunction(name: "vertexPassthrough")
+        let fragmentFunction = library.makeFunction(name: "fragmentPassthrough")
         
         // A render pipeline descriptor describes the configuration of our programmable pipeline
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
